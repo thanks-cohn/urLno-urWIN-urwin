@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Source Page Metadata",
+  "version": "1.0.0",
+  "description": "Attaches the exact webpage that initiated each download to the completed file.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwFFCYY3PiGafeXRHBzVyMzPsEr46E1XiIkEvaBUHncfBbb4uj1GG9Vw14XjdNm+hHFvCKDZuOzEHxZVSHacvrdqnfqKNCJxtk6H+y2w+o0w+QQS1g1OcIwsehb+zRN/r+pwPZ2JJQwnFbxkBGAiqcjhiiwfMNMVarv77P5ljGV5gJt0J68lsCaa2m7/T1dGm3/Mv1s1cJQu/asgC/N/mh27of/6g4nZbBa3T//8Wn3OfLNuw2eQfKd7+xECZy48kPW7vYmLk+nsFtUot1c3mWV5/0Vf3HyOaJpBt1x8gljVPMnyAA5rHxyXbdXz3KUtJbUnYVlBp5k2dnzpx4v6SUQIDAQAB",
+  "permissions": [
+    "alarms",
+    "downloads",
+    "nativeMessaging",
+    "storage",
+    "tabs",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_title": "Source Page Metadata",
+    "default_popup": "popup.html"
+  }
+}

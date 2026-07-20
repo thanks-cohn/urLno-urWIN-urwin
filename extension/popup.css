@@ -1,0 +1,83 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #0b0b0d;
+  color: #f4f4f5;
+}
+
+body {
+  box-sizing: border-box;
+  margin: 0;
+  width: 390px;
+  min-height: 180px;
+  padding: 18px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 17px;
+}
+
+header p,
+.empty {
+  color: #a1a1aa;
+}
+
+header p {
+  margin: 5px 0 16px;
+  font-size: 13px;
+}
+
+.summary {
+  margin-bottom: 12px;
+  padding: 9px 11px;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  background: #151518;
+  font-size: 13px;
+}
+
+.downloads {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.download {
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+}
+
+.filename,
+.source {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filename {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.source {
+  display: block;
+  margin-top: 4px;
+  color: #a5b4fc;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.status {
+  margin-top: 5px;
+  color: #a1a1aa;
+  font-size: 11px;
+}
+
+.status.error {
+  color: #fca5a5;
+}
