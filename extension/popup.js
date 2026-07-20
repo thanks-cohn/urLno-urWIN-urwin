@@ -30,6 +30,8 @@ function addDownload(record) {
     ? "URL attached"
     : record.metadataStatus === "download-interrupted"
       ? "Download interrupted; no file was tagged"
+    : record.metadataStatus === "source-unresolved"
+      ? "Download detected, but no safe source page was resolved"
     : record.metadataStatus === "error"
       ? `Could not attach URL: ${record.lastError}`
       : "Waiting for download completion";

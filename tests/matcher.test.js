@@ -84,6 +84,68 @@ const nestedGesture = resolveGestureForRequestTab({
 
 assert.equal(nestedGesture.sourcePageUrl, openerGesture.sourcePageUrl);
 
+const hiddenRequestGesture = {
+  gestureId: "hidden-request-gesture",
+  tabId: 40,
+  sourcePageUrl: "https://hitomi.test/gallery/hidden-request",
+  sourcePageTitle: "Hidden request gallery",
+  targetUrl: "",
+  capturedAt: now - 500,
+  claimedByDownloadId: null
+};
+
+const singleGestureBinding = selectBinding({
+  item: {
+    url: "https://extension-download.test/generated.cbz",
+    finalUrl: "https://extension-download.test/generated.cbz",
+    referrer: "",
+    startTime: new Date(now).toISOString()
+  },
+  requests: [],
+  gestures: [hiddenRequestGesture],
+  now
+});
+
+assert.equal(singleGestureBinding.sourcePageUrl, hiddenRequestGesture.sourcePageUrl);
+assert.equal(singleGestureBinding.sourceTabId, 40);
+assert.equal(singleGestureBinding.matchedBy, "single-unclaimed-gesture");
+
+const ambiguousGestures = selectBinding({
+  item: {
+    url: "https://extension-download.test/ambiguous.cbz",
+    finalUrl: "https://extension-download.test/ambiguous.cbz",
+    referrer: "",
+    startTime: new Date(now).toISOString()
+  },
+  requests: [],
+  gestures: [
+    hiddenRequestGesture,
+    {
+      ...hiddenRequestGesture,
+      gestureId: "competing-tab-gesture",
+      tabId: 41,
+      sourcePageUrl: "https://hitomi.test/gallery/another-tab"
+    }
+  ],
+  now
+});
+
+assert.equal(ambiguousGestures, null, "two possible tabs must never be guessed between");
+
+const claimedGestureIgnored = selectBinding({
+  item: {
+    url: "https://extension-download.test/second-file.cbz",
+    finalUrl: "https://extension-download.test/second-file.cbz",
+    referrer: "",
+    startTime: new Date(now).toISOString()
+  },
+  requests: [],
+  gestures: [{ ...hiddenRequestGesture, claimedByDownloadId: 999 }],
+  now
+});
+
+assert.equal(claimedGestureIgnored, null, "one click must not be reused for another download");
+
 const sharedFile = "https://cdn.test/files/shared.cbz";
 const sharedRequests = [
   { ...requests[0], requestId: "shared-a", urls: [sharedFile] },

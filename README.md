@@ -74,6 +74,8 @@ Switching tabs or navigating elsewhere after starting a download cannot change a
 
 Download buttons that open a temporary `about:blank` child tab are also supported. The child request inherits the frozen source page through Opera's opener/navigation-target relationship, not from whichever tab is active later.
 
+If a separate downloader extension hides both the request tab and referrer, Source Page Metadata uses a recent click only when exactly one unclaimed initiating gesture exists across every tab. It never guesses when two tabs are possible, and unresolved downloads remain visible in the popup for diagnosis.
+
 ## Filesystem note
 
 Extended attributes are filesystem metadata. They remain attached without modifying ZIP/CBZ/PDF/image bytes, but a copy operation, cloud service, archive operation, or filesystem that does not preserve Linux extended attributes may discard them.

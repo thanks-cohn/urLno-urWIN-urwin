@@ -203,7 +203,8 @@ async function bindDownload(item) {
   const state = await getState();
   pruneState(state);
 
-  if (state.downloads[item.id]) return state.downloads[item.id];
+  const existing = state.downloads[item.id];
+  if (existing?.sourcePageUrl) return existing;
 
   const binding = SourceMatcher.selectBinding({
     item,
@@ -213,6 +214,19 @@ async function bindDownload(item) {
   });
 
   if (!binding) {
+    state.downloads[item.id] = {
+      downloadId: item.id,
+      filename: item.filename || existing?.filename || "",
+      sourcePageUrl: "",
+      sourcePageTitle: "",
+      sourceTabId: null,
+      matchedBy: "unresolved",
+      downloadUrl: item.finalUrl || item.url || existing?.downloadUrl || "",
+      createdAt: Date.parse(item.startTime || "") || existing?.createdAt || Date.now(),
+      metadataStatus: "source-unresolved",
+      writeAttempts: existing?.writeAttempts || 0,
+      lastError: "No safe initiating page could be identified"
+    };
     console.warn("No safe initiating page was found; file will not be tagged", item.id, item.filename);
     await saveState(state);
     return null;
@@ -221,6 +235,13 @@ async function bindDownload(item) {
   if (binding.requestId) {
     const request = state.requests.find((candidate) => candidate.requestId === binding.requestId);
     if (request) request.claimedByDownloadId = item.id;
+  }
+
+  if (binding.gestureId) {
+    const gesture = flattenGestures(state).find(
+      (candidate) => candidate.gestureId === binding.gestureId
+    );
+    if (gesture) gesture.claimedByDownloadId = item.id;
   }
 
   const record = {
@@ -233,7 +254,7 @@ async function bindDownload(item) {
     downloadUrl: item.finalUrl || item.url || "",
     createdAt: Date.parse(item.startTime || "") || Date.now(),
     metadataStatus: "waiting-for-completion",
-    writeAttempts: 0,
+    writeAttempts: existing?.writeAttempts || 0,
     lastError: ""
   };
 
@@ -265,7 +286,7 @@ async function writeMetadata(downloadId) {
   const item = await searchDownload(downloadId);
   if (!item || item.state !== "complete") return;
 
-  if (!record) record = await bindDownload(item);
+  if (!record?.sourcePageUrl) record = await bindDownload(item);
   if (!record || !SourceMatcher.isWebUrl(record.sourcePageUrl)) return;
   if (record.metadataStatus === "written") return;
 

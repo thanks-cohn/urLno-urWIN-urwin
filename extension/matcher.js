@@ -6,6 +6,7 @@
   "use strict";
 
   const MAX_AGE_MS = 120000;
+  const SINGLE_GESTURE_FALLBACK_MS = 15000;
 
   function isWebUrl(value) {
     if (typeof value !== "string" || !value) return false;
@@ -133,8 +134,8 @@
       };
     }
 
-    // A browser-supplied referrer is safe as a final fallback because it belongs
-    // to this DownloadItem. A global or currently active tab is never used.
+    // A browser-supplied referrer belongs to this DownloadItem and therefore
+    // takes precedence over any cross-tab fallback.
     if (referrer) {
       return {
         sourcePageUrl: referrer,
@@ -146,11 +147,34 @@
       };
     }
 
+    // Some downloader extensions start chrome.downloads requests without a
+    // referrer or tabId. A single fresh, unclaimed gesture is still safe: there
+    // is no competing tab that could receive the wrong page. If two gestures
+    // are possible, refuse to guess.
+    const unclaimedRecentGestures = gestures.filter((gesture) =>
+      !gesture.claimedByDownloadId &&
+      startedAt >= gesture.capturedAt - 1000 &&
+      startedAt - gesture.capturedAt <= SINGLE_GESTURE_FALLBACK_MS
+    );
+
+    if (unclaimedRecentGestures.length === 1) {
+      const gesture = unclaimedRecentGestures[0];
+      return {
+        sourcePageUrl: gesture.sourcePageUrl,
+        sourcePageTitle: gesture.sourcePageTitle || "",
+        sourceTabId: gesture.tabId,
+        gestureId: gesture.gestureId,
+        requestId: "",
+        matchedBy: "single-unclaimed-gesture"
+      };
+    }
+
     return null;
   }
 
   return {
     MAX_AGE_MS,
+    SINGLE_GESTURE_FALLBACK_MS,
     comparableUrl,
     isWebUrl,
     sameUrl,
