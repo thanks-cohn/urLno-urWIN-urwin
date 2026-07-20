@@ -46,6 +46,36 @@
     );
   }
 
+  function resolveGestureForRequestTab({
+    gesturesByTab = {},
+    openersByTab = {},
+    requestTabId,
+    at = Date.now(),
+    maxDepth = 8
+  }) {
+    let tabId = requestTabId;
+    const visited = new Set();
+
+    for (let depth = 0; depth < maxDepth; depth += 1) {
+      if (!Number.isInteger(tabId) || visited.has(tabId)) return null;
+      visited.add(tabId);
+
+      const gestures = gesturesByTab[String(tabId)] || [];
+      const gesture = [...gestures]
+        .reverse()
+        .find((candidate) =>
+          at >= candidate.capturedAt - 1000 && at - candidate.capturedAt <= MAX_AGE_MS
+        );
+      if (gesture) return gesture;
+
+      const opener = openersByTab[String(tabId)];
+      if (!opener || at - opener.createdAt > MAX_AGE_MS) return null;
+      tabId = opener.openerTabId;
+    }
+
+    return null;
+  }
+
   function selectBinding({ item, requests = [], gestures = [], now = Date.now() }) {
     const startedAt = itemStartedAt(item, now);
     const referrer = isWebUrl(item?.referrer) ? item.referrer : "";
@@ -69,7 +99,7 @@
       return {
         sourcePageUrl: request.sourcePageUrl,
         sourcePageTitle: request.sourcePageTitle || "",
-        sourceTabId: request.tabId,
+        sourceTabId: request.sourceTabId ?? request.tabId,
         gestureId: request.gestureId || "",
         requestId: request.requestId,
         matchedBy: "tab-request"
@@ -124,6 +154,7 @@
     comparableUrl,
     isWebUrl,
     sameUrl,
+    resolveGestureForRequestTab,
     selectBinding
   };
 });

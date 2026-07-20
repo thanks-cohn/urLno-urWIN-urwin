@@ -72,6 +72,8 @@ Tab C -> download 103 -> page C
 
 Switching tabs or navigating elsewhere after starting a download cannot change an existing binding.
 
+Download buttons that open a temporary `about:blank` child tab are also supported. The child request inherits the frozen source page through Opera's opener/navigation-target relationship, not from whichever tab is active later.
+
 ## Filesystem note
 
 Extended attributes are filesystem metadata. They remain attached without modifying ZIP/CBZ/PDF/image bytes, but a copy operation, cloud service, archive operation, or filesystem that does not preserve Linux extended attributes may discard them.

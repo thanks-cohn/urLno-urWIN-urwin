@@ -21,6 +21,7 @@ let operationQueue = Promise.resolve();
 function blankState() {
   return {
     gesturesByTab: {},
+    openersByTab: {},
     requests: [],
     downloads: {}
   };
@@ -31,6 +32,7 @@ async function getState() {
   const stored = await chrome.storage.local.get(STORAGE_KEY);
   loadedState = stored[STORAGE_KEY] || blankState();
   loadedState.gesturesByTab ||= {};
+  loadedState.openersByTab ||= {};
   loadedState.requests ||= [];
   loadedState.downloads ||= {};
   return loadedState;
@@ -68,6 +70,10 @@ function pruneState(state, now = Date.now()) {
     else delete state.gesturesByTab[tabId];
   }
 
+  for (const [tabId, opener] of Object.entries(state.openersByTab)) {
+    if (now - opener.createdAt > GESTURE_TTL_MS) delete state.openersByTab[tabId];
+  }
+
   state.requests = state.requests
     .filter((request) => now - request.createdAt <= REQUEST_TTL_MS)
     .slice(-MAX_REQUESTS);
@@ -77,13 +83,6 @@ function pruneState(state, now = Date.now()) {
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, MAX_DOWNLOADS);
   state.downloads = Object.fromEntries(downloads.map((download) => [download.downloadId, download]));
-}
-
-function mostRecentGestureForTab(state, tabId, at = Date.now()) {
-  const gestures = state.gesturesByTab[String(tabId)] || [];
-  return [...gestures]
-    .reverse()
-    .find((gesture) => at >= gesture.capturedAt - 1000 && at - gesture.capturedAt <= GESTURE_TTL_MS) || null;
 }
 
 function pageUrlFromGestureMessage(message, sender) {
@@ -125,7 +124,12 @@ async function recordRequest(details) {
   if (!Number.isInteger(details.tabId) || details.tabId < 0) return;
 
   const state = await getState();
-  const gesture = mostRecentGestureForTab(state, details.tabId, details.timeStamp || Date.now());
+  const gesture = SourceMatcher.resolveGestureForRequestTab({
+    gesturesByTab: state.gesturesByTab,
+    openersByTab: state.openersByTab,
+    requestTabId: details.tabId,
+    at: details.timeStamp || Date.now()
+  });
   if (!gesture) return;
 
   const existing = state.requests.find((request) => request.requestId === details.requestId);
@@ -135,6 +139,7 @@ async function recordRequest(details) {
     state.requests.push({
       requestId: details.requestId,
       tabId: details.tabId,
+      sourceTabId: gesture.tabId,
       frameId: details.frameId,
       gestureId: gesture.gestureId,
       sourcePageUrl: gesture.sourcePageUrl,
@@ -149,6 +154,27 @@ async function recordRequest(details) {
   }
 
   pruneState(state);
+  await saveState(state);
+}
+
+async function recordTabOpener(tabId, openerTabId, createdAt = Date.now()) {
+  if (!Number.isInteger(tabId) || !Number.isInteger(openerTabId)) return;
+
+  const state = await getState();
+  state.openersByTab[String(tabId)] = {
+    openerTabId,
+    createdAt
+  };
+  pruneState(state);
+  await saveState(state);
+}
+
+async function markDownloadInterrupted(downloadId) {
+  const state = await getState();
+  const record = state.downloads[downloadId];
+  if (!record || record.metadataStatus === "written") return;
+  record.metadataStatus = "download-interrupted";
+  record.lastError = "The download did not complete";
   await saveState(state);
 }
 
@@ -321,6 +347,8 @@ chrome.downloads.onCreated.addListener((item) => {
 chrome.downloads.onChanged.addListener((delta) => {
   if (delta.state?.current === "complete") {
     void enqueue(() => writeMetadata(delta.id));
+  } else if (delta.state?.current === "interrupted") {
+    void enqueue(() => markDownloadInterrupted(delta.id));
   }
 });
 
@@ -330,10 +358,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (Number.isInteger(downloadId)) void enqueue(() => writeMetadata(downloadId));
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => {
-  void enqueue(async () => {
-    const state = await getState();
-    delete state.gesturesByTab[String(tabId)];
-    await saveState(state);
-  });
+chrome.tabs.onCreated.addListener((tab) => {
+  void enqueue(() => recordTabOpener(tab.id, tab.openerTabId));
+});
+
+chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
+  void enqueue(() => recordTabOpener(details.tabId, details.sourceTabId, details.timeStamp));
 });

@@ -24,6 +24,7 @@ assert manifest["manifest_version"] == 3
 assert manifest["background"]["service_worker"] == "background.js"
 assert "downloads" in manifest["permissions"]
 assert "nativeMessaging" in manifest["permissions"]
+assert "webNavigation" in manifest["permissions"]
 assert "webRequest" in manifest["permissions"]
 public_key = base64.b64decode(manifest["key"])
 digest = hashlib.sha256(public_key).digest()[:16]

@@ -28,6 +28,8 @@ function addDownload(record) {
   status.className = `status${record.metadataStatus === "error" ? " error" : ""}`;
   status.textContent = record.metadataStatus === "written"
     ? "URL attached"
+    : record.metadataStatus === "download-interrupted"
+      ? "Download interrupted; no file was tagged"
     : record.metadataStatus === "error"
       ? `Could not attach URL: ${record.lastError}`
       : "Waiting for download completion";

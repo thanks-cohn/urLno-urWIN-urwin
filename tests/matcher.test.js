@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { selectBinding } = require("../extension/matcher.js");
+const { resolveGestureForRequestTab, selectBinding } = require("../extension/matcher.js");
 
 const now = Date.now();
 const pageA = "https://example.test/gallery/a";
@@ -52,6 +52,37 @@ assert.equal(bindingA.sourceTabId, 10);
 assert.equal(bindingA.sourcePageUrl, pageA);
 assert.equal(bindingB.sourceTabId, 20);
 assert.equal(bindingB.sourcePageUrl, pageB);
+
+const openerGesture = {
+  gestureId: "gesture-opener",
+  tabId: 30,
+  sourcePageUrl: "https://hitomi.test/gallery/from-opener",
+  sourcePageTitle: "Opening gallery",
+  targetUrl: "",
+  capturedAt: now - 200
+};
+
+const inheritedGesture = resolveGestureForRequestTab({
+  gesturesByTab: { 30: [openerGesture] },
+  openersByTab: { 31: { openerTabId: 30, createdAt: now - 100 } },
+  requestTabId: 31,
+  at: now
+});
+
+assert.equal(inheritedGesture.sourcePageUrl, openerGesture.sourcePageUrl);
+assert.equal(inheritedGesture.tabId, 30, "a blank child tab must retain its opener as the source tab");
+
+const nestedGesture = resolveGestureForRequestTab({
+  gesturesByTab: { 30: [openerGesture] },
+  openersByTab: {
+    31: { openerTabId: 30, createdAt: now - 100 },
+    32: { openerTabId: 31, createdAt: now - 50 }
+  },
+  requestTabId: 32,
+  at: now
+});
+
+assert.equal(nestedGesture.sourcePageUrl, openerGesture.sourcePageUrl);
 
 const sharedFile = "https://cdn.test/files/shared.cbz";
 const sharedRequests = [
